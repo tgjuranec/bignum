@@ -20,6 +20,11 @@ public:
 	void print();
 	void add(bignum &a);
 	void mult(bignum &a);
+	void pow(bignum &a);
+	bool lt(bignum &a);
+	bool eq(bignum &a);
+	bool gt(bignum &a);
+	void incr();
 };
 
 
