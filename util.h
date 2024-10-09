@@ -62,6 +62,18 @@ void util_mult(UINT a, UINT b, UINT &resh, UINT &resl){
 }
 
 template <typename UINT>
+void util_subtract(UINT a, UINT b, UINT &resh, UINT &resl){
+	if(a >= b){
+		resl = a - b;
+		resh = 0;
+	}
+	else{
+		resl = a-b;
+		resh = 1;
+	}
+}
+
+template <typename UINT>
 UINT util_pow_mod(UINT a, UINT b, UINT m)
 {
 	UINT i;

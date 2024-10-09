@@ -18,6 +18,29 @@ void bignum::add(bignum &a){
 }
 
 
+void bignum::mod(bignum &a){
+
+}
+
+void bignum::sub(bignum &a){
+	bignum tmpres(0,0,0,0);
+	bignum one(0,0,0,1);
+	if(this->lt(a)){
+		*this = tmpres;
+		return;
+	}
+	for(int i = SIZE-1; i >= 0; i++){
+		if(s[i] < a.s[i] && i > 0){
+			// handle carry
+			tmpres.s[i-1] = (uint64_t) -1;
+		}
+		s[i] -= a.s[i];
+	}
+	*this = tmpres;
+	return;
+}
+
+
 void bignum::mult(bignum &a){
 	uint64_t resh{0}, resl{0};
 	uint64_t bnTmp[SIZE*2] = {0};
@@ -51,45 +74,9 @@ void bignum::mult(bignum &a){
  * POWER FUNCTION
  * uses characteristic of powers a^(256*255*253) = ((a^256)^255)^253
  */
+
+
 void bignum::pow(bignum &a){
-	nMultiplication = 0;
-	bignum one{0,0,0,1};
-	bignum zero{0,0,0,0};
-	if(eq(zero)){
-		for(int i = 0; i < SIZE; i++){
-			s[i] = one.s[i];
-		}
-	}
-	bignum tmpPower = one;
-	bignum tmp = one;
-	for (int word = (SIZE-1); word >=0 ; word--){
-		for(uint64_t bit = 0; bit < (sizeof(uint64_t)*8); bit++){
-			uint64_t isone = (a.s[word] & ((uint64_t)1 << (uint64_t) bit)); 	// those cast must be
-																					// otherwise they are converted to 32-bit
-																					// e.g. (1<<34) = 0x4
-			if(isone){
-				// "this" is fixed until the end of the algorythm
-				// Temporary value is stored in the tmp variable
-				// init tmpPower to base valuein *this
-				tmpPower = *this;
-				// rise tmpPower to power
-				for(uint32_t nmult = 0; nmult < ((SIZE-1-word)*sizeof(uint64_t)*8 + bit); nmult++){
-					tmpPower.mult(tmpPower);
-					nMultiplication++;
-				}
-				// store temporary value by multiplying existing and tmpPower result
-				tmp.mult(tmpPower);
-			}
-		}
-	}
-	for(int word = 0; word< SIZE; word++){
-		s[word] = tmp.s[word];
-	}
-	std::cout << "Function pow(): nMultiplication = " << nMultiplication << "\n";
-
-}
-
-void bignum::powmod(bignum &a){
 	bignum one{0,0,0,1};
 	bignum zero{0,0,0,0};
 	if(eq(zero)){
@@ -109,9 +96,9 @@ void bignum::powmod(bignum &a){
 																					// e.g. (1<<34) = 0x4
 			// "this" is fixed until the end of the algorythm
 			// Temporary value is stored in the tmp variable
-			// with every increment (bit shift) multiply tmp
+			// with every increment (bit shift) multiply (square) tmpPower
 			if(isone){
-				// store temporary value by multiplying existing and tmpPower result
+				// store temporary value by multiplying existing and current tmpPower result
 				tmp.mult(tmpPower);
 			}
 			// square current value of tmpPower with every incrementation
@@ -125,6 +112,18 @@ void bignum::powmod(bignum &a){
 
 
 
+void bignum::div(bignum &a){
+
+	bignum tmpres(0,0,0,1);		// temporary result
+	bignum tmpdividend(0,0,0,0);
+	bignum bitshift64(0,0,1,0);
+	for(uint32_t i = 0; i < SIZE; i++){
+		if(a.s[i] == 0){
+			tmpres.mult(bitshift64);
+
+		}
+	}
+}
 
 void bignum::print(){
 	for(uint8_t i=0; i < SIZE; i++){
