@@ -31,7 +31,7 @@ void bignum::mod(bignum &a){
 	// first do division
 	div(a);
 	// then copy division remainder
-	for(uint32_t i = 0; i < SIZE; i++){
+	for(uint64_t i = 0; i < SIZE; i++){
 		s[i] = rem[i];
 		rem[i] = 0;
 	}
@@ -45,17 +45,17 @@ void bignum::mod(bignum &a){
 
 void bignum::sub(bignum &a){
 	bignum tmpres = *this;
-	for(int64_t i = SIZE-1; i >= 0; --i){
-		if(s[i] < a.s[i]){
+	for(uint64_t i = 0; i < SIZE; ++i){
+		if(s[SIZE-1-i] < a.s[SIZE-1-i]){
 			// handle carry
-			if(i > 0){
-				tmpres.s[i-1] = (uint64_t) -1;
+			if(i== (SIZE-1)){
+				tmpres.s[SIZE-1-i-1] = (uint64_t) -1;
 			}
 			else if(i == 0){
 				tmpres.rem[SIZE-1] = (uint64_t) -1;
 			}
 		}
-		tmpres.s[i] -= a.s[i];
+		tmpres.s[SIZE-1-i] -= a.s[SIZE-1-i];
 	}
 	*this = tmpres;
 	return;
@@ -69,25 +69,25 @@ void bignum::sub(bignum &a){
 void bignum::mult(bignum &a){
 	uint64_t resh{0}, resl{0};
 	uint64_t bnTmp[SIZE*2] = {0};
-	for(int64_t i = (SIZE-1); i >= 0; i--){
-		for(int64_t j = (SIZE-1); j >= 0; j--){
-			util_mult<uint64_t>(s[i], a.s[j], resh, resl);
+	for(uint64_t i = 0; i < SIZE; ++i){
+		for(uint64_t j = 0; j < SIZE; ++j){
+			util_mult<uint64_t>(s[SIZE-1-i], a.s[SIZE-1-j], resh, resl);
 			uint64_t resh_add;
 			int64_t shiftcarry = 0;
 
 			do{
-				util_add<uint64_t>(bnTmp[i+j+1-shiftcarry], resl, resh_add, bnTmp[i+j+1-shiftcarry]);
+				util_add<uint64_t>(bnTmp[2*SIZE - 1-i-j-shiftcarry], resl, resh_add, bnTmp[2*SIZE - 1 -i-j-shiftcarry]);
 				shiftcarry++;
 				resl = resh_add;
 			}
-			while(resh_add > 0 && (i+j+1-shiftcarry) > 0);
+			while(resh_add > 0 && (2*SIZE - 1-i-j-shiftcarry) > 0);
 			shiftcarry = 0;
 			do{
-				util_add<uint64_t>(bnTmp[i+j-shiftcarry], resh, resh_add, bnTmp[i+j-shiftcarry]);
+				util_add<uint64_t>(bnTmp[2*SIZE - 2-i-j-shiftcarry], resh, resh_add, bnTmp[2*SIZE - 2-i-j -shiftcarry]);
 				shiftcarry++;
 				resh = resh_add;
 			}
-			while(resh_add > 0 && (i+j-shiftcarry) > 0);
+			while(resh_add > 0 && (2*SIZE - 2-i-j - shiftcarry) > 0);
 		}
 	}
 	for(uint64_t i = 0;i < SIZE; i++){
@@ -117,9 +117,9 @@ void bignum::pow(bignum &a){
 	}
 	bignum tmpPower = *this;
 	bignum tmp = one;
-	for (int64_t word = (SIZE-1); word >=0 ; word--){
+	for (uint64_t i = 0; i < SIZE ; ++i){
 		for(uint64_t bit = 0; bit < (sizeof(uint64_t)*8); bit++){
-			uint64_t isone = (a.s[word] & ((uint64_t)1 << (uint64_t) bit)); 	// those cast must be
+			uint64_t isone = (a.s[SIZE - 1 - i] & ((uint64_t)1 << (uint64_t) bit)); 	// those cast must be
 																					// otherwise they are converted to 32-bit
 																					// e.g. (1<<34) = 0x4
 			// "this" is fixed until the end of the algorythm
@@ -133,8 +133,8 @@ void bignum::pow(bignum &a){
 			tmpPower.mult(tmpPower);
 		}
 	}
-	for(uint64_t word = 0; word< SIZE; word++){
-		s[word] = tmp.s[word];
+	for(uint64_t i = 0; i< SIZE; i++){
+		s[i] = tmp.s[i];
 	}
 }
 
@@ -155,7 +155,7 @@ void bignum::div(bignum &a){
 	bignum tmpinit = *this;
 	bignum tmpdividend(0,0,0,0);
 	bignum bitshiftleft(0,0,0,2);
-	for(uint32_t i = 0; i < SIZE*sizeof(uint64_t)*8; i++){
+	for(uint64_t i = 0; i < SIZE*sizeof(uint64_t)*8; i++){
 		tmpres.mult(bitshiftleft);
 		tmpdividend.mult(bitshiftleft);	// left shift tmpdividend
 		tmpinit.mult(bitshiftleft);		// left shift tmp init
