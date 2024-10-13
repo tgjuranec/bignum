@@ -23,18 +23,18 @@ void bignum::mod(bignum &a){
 }
 
 void bignum::sub(bignum &a){
-	bignum tmpres(0,0,0,0);
-	bignum one(0,0,0,1);
-	if(this->lt(a)){
-		*this = tmpres;
-		return;
-	}
-	for(int i = SIZE-1; i >= 0; i++){
-		if(s[i] < a.s[i] && i > 0){
+	bignum tmpres = *this;
+	for(int i = SIZE-1; i >= 0; --i){
+		if(s[i] < a.s[i]){
 			// handle carry
-			tmpres.s[i-1] = (uint64_t) -1;
+			if(i > 0){
+				tmpres.s[i-1] = (uint64_t) -1;
+			}
+			else if(i == 0){
+				tmpres.rem[SIZE-1] = (uint64_t) -1;
+			}
 		}
-		s[i] -= a.s[i];
+		tmpres.s[i] -= a.s[i];
 	}
 	*this = tmpres;
 	return;
@@ -67,6 +67,9 @@ void bignum::mult(bignum &a){
 	}
 	for(uint8_t i = 0;i < SIZE; i++){
 		s[i] = bnTmp[i+SIZE];
+	}
+	for(uint8_t i = 0;i < SIZE; i++){
+		rem[i] = bnTmp[i];
 	}
 }
 
@@ -113,16 +116,40 @@ void bignum::pow(bignum &a){
 
 
 void bignum::div(bignum &a){
-
-	bignum tmpres(0,0,0,1);		// temporary result
+	/*
+	 *  dividend (*this) will be shifted left 1 bit, MSB is written to tmpdividend variable
+	 *  tmp dividend will be compared wih a, if greater we write '1' to tmpresult
+	 *  result will be stored into tmpres variable on the left side
+	 *  remainder will be calculated (tmpdividend - a) and stored into tmpdividend for further calculations
+	 */
+	bignum tmpres(0,0,0,0);		// temporary result
+	bignum tmpinit = *this;
 	bignum tmpdividend(0,0,0,0);
-	bignum bitshift64(0,0,1,0);
-	for(uint32_t i = 0; i < SIZE; i++){
-		if(a.s[i] == 0){
-			tmpres.mult(bitshift64);
-
+	bignum bitshiftleft(0,0,0,2);
+	for(uint32_t i = 0; i < SIZE*sizeof(uint64_t)*8; i++){
+		tmpres.mult(bitshiftleft);
+		tmpdividend.mult(bitshiftleft);	// left shift tmpdividend
+		tmpinit.mult(bitshiftleft);		// left shift tmp init
+		if(tmpinit.rem[SIZE-1]){		// move carry to right most tmpdividend bit
+			tmpdividend.s[SIZE-1] |= 1;
+		}
+		if(tmpdividend.lt(a)){	// write '0' to tmpres
+			continue;
+		}
+		else{
+			tmpres.s[SIZE-1] |= 1;  // write '1' to tmpres
+			tmpdividend.sub(a);
 		}
 	}
+
+
+	for(uint8_t i = 0;i < SIZE; i++){
+		s[i] = tmpres.s[i];
+	}
+	for(uint8_t i = 0;i < SIZE; i++){
+		rem[i] = tmpdividend.s[i];
+	}
+
 }
 
 void bignum::print(){
