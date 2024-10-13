@@ -8,23 +8,44 @@
 #include "bignum.h"
 #include <iostream>
 
+/*
+ * ADDITION FUNCTION
+ *
+ */
+
 void bignum::add(bignum &a){
 	uint64_t resh{0}, resl{0}, carry{0};
-	for(uint8_t c=0; c < SIZE; c++){
+	for(uint64_t c=0; c < SIZE; c++){
 		util_add<uint64_t>(s[SIZE-1-c], a.s[SIZE-1-c], resh, resl);
 		s[SIZE-1-c] = resl + carry;
 		carry = resh;
 	}
 }
 
+/*
+ * MODULO FUNCTION
+ *
+ */
 
 void bignum::mod(bignum &a){
+	// first do division
+	div(a);
+	// then copy division remainder
+	for(uint32_t i = 0; i < SIZE; i++){
+		s[i] = rem[i];
+		rem[i] = 0;
+	}
 
 }
 
+/*
+ * SUBTRACTION FUNCTION
+ *
+ */
+
 void bignum::sub(bignum &a){
 	bignum tmpres = *this;
-	for(int i = SIZE-1; i >= 0; --i){
+	for(int64_t i = SIZE-1; i >= 0; --i){
 		if(s[i] < a.s[i]){
 			// handle carry
 			if(i > 0){
@@ -40,6 +61,10 @@ void bignum::sub(bignum &a){
 	return;
 }
 
+/*
+ * MULTIPLICATION FUNCTION
+ *
+ */
 
 void bignum::mult(bignum &a){
 	uint64_t resh{0}, resl{0};
@@ -48,7 +73,7 @@ void bignum::mult(bignum &a){
 		for(int8_t j = (SIZE-1); j >= 0; j--){
 			util_mult<uint64_t>(s[i], a.s[j], resh, resl);
 			uint64_t resh_add;
-			int shiftcarry = 0;
+			int64_t shiftcarry = 0;
 
 			do{
 				util_add<uint64_t>(bnTmp[i+j+1-shiftcarry], resl, resh_add, bnTmp[i+j+1-shiftcarry]);
@@ -65,10 +90,10 @@ void bignum::mult(bignum &a){
 			while(resh_add > 0 && (i+j-shiftcarry) > 0);
 		}
 	}
-	for(uint8_t i = 0;i < SIZE; i++){
+	for(uint64_t i = 0;i < SIZE; i++){
 		s[i] = bnTmp[i+SIZE];
 	}
-	for(uint8_t i = 0;i < SIZE; i++){
+	for(uint64_t i = 0;i < SIZE; i++){
 		rem[i] = bnTmp[i];
 	}
 }
@@ -83,7 +108,7 @@ void bignum::pow(bignum &a){
 	bignum one{0,0,0,1};
 	bignum zero{0,0,0,0};
 	if(eq(zero)){
-		for(int i = 0; i < SIZE; i++){
+		for(uint64_t i = 0; i < SIZE; i++){
 			s[i] = one.s[i];
 		}
 	}
@@ -92,7 +117,7 @@ void bignum::pow(bignum &a){
 	}
 	bignum tmpPower = *this;
 	bignum tmp = one;
-	for (int word = (SIZE-1); word >=0 ; word--){
+	for (int64_t word = (SIZE-1); word >=0 ; word--){
 		for(uint64_t bit = 0; bit < (sizeof(uint64_t)*8); bit++){
 			uint64_t isone = (a.s[word] & ((uint64_t)1 << (uint64_t) bit)); 	// those cast must be
 																					// otherwise they are converted to 32-bit
@@ -108,12 +133,16 @@ void bignum::pow(bignum &a){
 			tmpPower.mult(tmpPower);
 		}
 	}
-	for(int word = 0; word< SIZE; word++){
+	for(uint64_t word = 0; word< SIZE; word++){
 		s[word] = tmp.s[word];
 	}
 }
 
 
+/*
+ * DIVISION FUNCTION
+ *
+ */
 
 void bignum::div(bignum &a){
 	/*
@@ -142,18 +171,19 @@ void bignum::div(bignum &a){
 		}
 	}
 
-
-	for(uint8_t i = 0;i < SIZE; i++){
+	// COPY tmpres INTO MEMBER ARRAY
+	for(uint64_t i = 0;i < SIZE; i++){
 		s[i] = tmpres.s[i];
 	}
-	for(uint8_t i = 0;i < SIZE; i++){
+	// COPY REMAINDE IN tmpdividend TO rem MEMBER ARRAY
+	for(uint64_t i = 0;i < SIZE; i++){
 		rem[i] = tmpdividend.s[i];
 	}
 
 }
 
 void bignum::print(){
-	for(uint8_t i=0; i < SIZE; i++){
+	for(uint64_t i=0; i < SIZE; i++){
 		std::cout << std::hex << std::uppercase << s[i] << " ";
 	}
 	std::cout << "\n";
@@ -163,7 +193,7 @@ void bignum::print(){
  * TEST IF NUMBERS ARE EQUAL
  */
 bool bignum::eq(bignum &a){
-	for(uint8_t i = 0; i < SIZE; i++){
+	for(uint64_t i = 0; i < SIZE; i++){
 		if(s[i] != a.s[i]){
 			return false;
 		}
@@ -175,7 +205,7 @@ bool bignum::eq(bignum &a){
  * TEST IF IT IS LESS THAN ARGUMENT
  */
 bool bignum::lt(bignum &a){
-	for(uint8_t i = 0; i < SIZE; i++){
+	for(uint64_t i = 0; i < SIZE; i++){
 		if(s[i] < a.s[i]){
 			return true;
 		}
@@ -186,9 +216,13 @@ bool bignum::lt(bignum &a){
 	return false;
 }
 
+/*
+ * TEST IF IT IS GREATER THAN ARGUMENT
+ *
+ */
 
 bool bignum::gt(bignum &a){
-	for(uint8_t i = 0; i < SIZE; i++){
+	for(uint64_t i = 0; i < SIZE; i++){
 		if(s[i] > a.s[i]){
 			return true;
 		}

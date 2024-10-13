@@ -23,10 +23,11 @@ int main(){
 
     bignum three(0,0,0,10);
     bignum two(0,0,0,2558);
-    two.div(three);
+    two.mod(three);
     two.print();
-    std::cout << two.rem[3] << "\n";
-    a.div(b);
+    a.sub(b);
+    a.print();
+    a.pow(b);
     a.print();
     return 0;
 }
