@@ -25,9 +25,9 @@ int main(){
     bignum two(0,0,0,2558);
     two.mod(three);
     two.print();
-    a.sub(b);
-    a.print();
     a.pow(b);
+    a.print();
+    a.sub(b);
     a.print();
     return 0;
 }

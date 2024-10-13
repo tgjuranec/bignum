@@ -69,8 +69,8 @@ void bignum::sub(bignum &a){
 void bignum::mult(bignum &a){
 	uint64_t resh{0}, resl{0};
 	uint64_t bnTmp[SIZE*2] = {0};
-	for(int8_t i = (SIZE-1); i >= 0; i--){
-		for(int8_t j = (SIZE-1); j >= 0; j--){
+	for(int64_t i = (SIZE-1); i >= 0; i--){
+		for(int64_t j = (SIZE-1); j >= 0; j--){
 			util_mult<uint64_t>(s[i], a.s[j], resh, resl);
 			uint64_t resh_add;
 			int64_t shiftcarry = 0;
