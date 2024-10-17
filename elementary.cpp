@@ -7,27 +7,27 @@
 
 
 
-#include <iostream>
-#include <string>
 #include "bignum.h"
 
 
 
 
 int main(){
+	uint64_t c1[] = {0,0,0,0xFFFFFFFFFFFFFFFF};
+	uint64_t c2[] = {0,0,0,1};
+	bignum<uint64_t> a(c1,4);
+	bignum<uint64_t> acarry(c1,4);
+    bignum<uint64_t> b(c2,4);
 
-	bignum a(0x9DAF3B4C94CFE30C,0x649A74D6BD89F250,0x8C2C8092A0D234A7,0x7072008745545ADF);
-    bignum b(0xCaDFDA,0x19885FF5FFFE,0XFFaaFFFFFFF,0xFFF9876543F4FF7);
-
-
-
-    bignum three(0,0,0,10);
-    bignum two(0,0,0,2558);
-    two.mod(three);
-    two.print();
-    a.pow(b);
+    a.add(b);
     a.print();
-    a.sub(b);
-    a.print();
+
+    acarry.add(b);
+    acarry.print();
+
+
+
+
+
     return 0;
 }

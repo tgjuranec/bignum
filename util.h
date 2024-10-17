@@ -9,21 +9,44 @@
 #define UTIL_H_
 
 #include <cmath>
+#include <utility>
+#include <tuple>
 
 template <typename UINT>
 void util_add(UINT a, UINT b, UINT &resh, UINT &resl){
-    resl = a + b;
+
     const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
     const UINT UINTMAX = (((1 << (FULLSIZE-1))-1) | ((1 << (FULLSIZE-1))));
+    resl = a + b;
     if((UINTMAX - a) < b){
         resh = 1;
     }
     else{
         resh = 0;
     }
+
     return;
 }
 
+template <typename UINT>
+auto util_add_carry(UINT a, UINT b, UINT carry, UINT &resh, UINT &resl){
+
+    const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
+    const UINT UINTMAX = (((1 << (FULLSIZE-1))-1) | ((1 << (FULLSIZE-1))));
+    ;
+    resl = a + b;
+    if((UINTMAX - a) < b){
+        resh = 1;
+    }
+    else{
+        resh = 0;
+    }
+    resl += carry;
+    if(resl == 0){
+    	resh=1;
+    }
+
+}
 
 
 template <typename UINT>
