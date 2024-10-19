@@ -20,13 +20,14 @@ public:
 	UINT *s;
 	UINT *rem;
 	bignum(UINT a[], UINT size);
+	bignum(bignum &a);
 	~bignum();
 	void print();
 	void add(bignum &a);
 	void mult(bignum &a);
 	void sub(bignum &a);
 	void pow(bignum &a);
-	void powmod(bignum &a);
+	void powmod(bignum &a, bignum &mod);
 	bool lt(bignum &a);
 	bool eq(bignum &a);
 	bool gt(bignum &a);
@@ -53,6 +54,15 @@ template <typename UINT> bignum<UINT>::~bignum(){
 	rem = nullptr;
 }
 
+template <typename UINT> bignum<UINT>::bignum(bignum &a){
+	SIZE = a.SIZE;
+	s = new UINT[SIZE];
+	rem = new UINT[SIZE];
+	for (UINT i = 0; i < SIZE; ++i){
+		s[i] = a.s[i];
+		rem[i] = a.rem[i];
+	}
+}
 
 #include <iostream>
 
@@ -64,14 +74,9 @@ template <typename UINT> bignum<UINT>::~bignum(){
 template <typename UINT> void bignum<UINT>::add(bignum &a){
 	uint64_t resh{0}, resl{0}, carry{0};
 	for(uint64_t i=0; i < SIZE; i++){
-		util_add<uint64_t>(s[SIZE-1-i], a.s[SIZE-1-i], resh, resl);
-		s[SIZE-1-i] = resl + carry;
-		if(resl == UINTMAX && carry == 1){
-			carry = 1;
-		}
-		else{
-			carry = resh;
-		}
+		util_add_carry<uint64_t>(s[SIZE-1-i], a.s[SIZE-1-i],carry, resh, resl);
+		s[SIZE-1-i] = resl;
+		carry = resh;
 	}
 	for(uint64_t i=0; i < SIZE; i++){
 		rem[i] =0;
@@ -109,14 +114,13 @@ template <typename UINT> void bignum<UINT>::sub(bignum &a){
 		tmparg.s[i] = ~tmparg.s[i];
 	}
 	add(tmparg);
-	incr();
+	UINT carry = 0;
 	if(rem[SIZE-1] == 0){
-		rem[SIZE-1] = 1;
+		carry = 1;
 	}
-	else{
-		rem[SIZE-1] = 0;
-	}
+	incr();
 
+	rem[SIZE-1] = carry;
 	return;
 }
 
@@ -201,6 +205,51 @@ template <typename UINT> void bignum<UINT>::pow(bignum &a){
 
 
 /*
+ * POWER FUNCTION WITH MODULO
+ * uses characteristic of powers a^(256*255*253) = ((a^256)^255)^253
+ */
+
+
+template <typename UINT> void bignum<UINT>::powmod(bignum &a, bignum &mod){
+	UINT oneinit[SIZE] = {0};
+	bignum<UINT> zero(oneinit,SIZE);
+	oneinit[SIZE-1]= 1;
+	bignum<UINT> one(oneinit, SIZE);
+	if(eq(zero)){
+		for(uint64_t i = 0; i < SIZE; i++){
+			s[i] = one.s[i];
+		}
+	}
+	if(eq(one)){
+		return;
+	}
+	bignum<UINT> tmpPower(s,SIZE);
+	bignum<UINT> tmp(one.s,SIZE);
+	tmpPower.mod(mod);
+	for (uint64_t i = 0; i < SIZE ; ++i){
+		for(uint64_t bit = 0; bit < (sizeof(uint64_t)*8); bit++){
+			uint64_t isone = (a.s[SIZE - 1 - i] & ((uint64_t)1 << (uint64_t) bit)); 	// those cast must be
+																					// otherwise they are converted to 32-bit
+			tmpPower.mod(mod);																		// e.g. (1<<34) = 0x4
+			// "this" is fixed until the end of the algorythm
+			// Temporary value is stored in the tmp variable
+			// with every increment (bit shift) multiply (square) tmpPower
+			if(isone){
+				// store temporary value by multiplying existing and current tmpPower result
+				tmp.mult(tmpPower);
+				tmp.mod(mod);
+			}
+			// square current value of tmpPower with every incrementation
+			tmpPower.mult(tmpPower);
+		}
+	}
+	for(uint64_t i = 0; i< SIZE; i++){
+		s[i] = tmp.s[i];
+	}
+}
+
+
+/*
  * DIVISION FUNCTION
  *
  */
@@ -238,7 +287,7 @@ template <typename UINT> void bignum<UINT>::div(bignum &a){
 	for(uint64_t i = 0;i < SIZE; i++){
 		s[i] = tmpres.s[i];
 	}
-	// COPY REMAINDE IN tmpdividend TO rem MEMBER ARRAY
+	// COPY REMAINDER IN tmpdividend TO rem MEMBER ARRAY
 	for(uint64_t i = 0;i < SIZE; i++){
 		rem[i] = tmpdividend.s[i];
 	}

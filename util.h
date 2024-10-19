@@ -33,7 +33,7 @@ auto util_add_carry(UINT a, UINT b, UINT carry, UINT &resh, UINT &resl){
 
     const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
     const UINT UINTMAX = (((1 << (FULLSIZE-1))-1) | ((1 << (FULLSIZE-1))));
-    ;
+
     resl = a + b;
     if((UINTMAX - a) < b){
         resh = 1;
@@ -41,10 +41,11 @@ auto util_add_carry(UINT a, UINT b, UINT carry, UINT &resh, UINT &resl){
     else{
         resh = 0;
     }
-    resl += carry;
-    if(resl == 0){
-    	resh=1;
+    if((UINTMAX - carry) < resl){
+    	resh++;
     }
+
+    resl += carry;
 
 }
 
