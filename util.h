@@ -16,7 +16,7 @@ template <typename UINT>
 void util_add(UINT a, UINT b, UINT &resh, UINT &resl){
 
     const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
-    const UINT UINTMAX = (((1 << (FULLSIZE-1))-1) | ((1 << (FULLSIZE-1))));
+    const UINT UINTMAX = (UINT) (0UL - (UINT)1);
     resl = a + b;
     if((UINTMAX - a) < b){
         resh = 1;
@@ -29,10 +29,10 @@ void util_add(UINT a, UINT b, UINT &resh, UINT &resl){
 }
 
 template <typename UINT>
-auto util_add_carry(UINT a, UINT b, UINT carry, UINT &resh, UINT &resl){
+void util_add_carry(UINT a, UINT b, UINT carry, UINT &resh, UINT &resl){
 
     const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
-    const UINT UINTMAX = (((1 << (FULLSIZE-1))-1) | ((1 << (FULLSIZE-1))));
+    const UINT UINTMAX = (UINT) (0UL - (UINT)1);
 
     resl = a + b;
     if((UINTMAX - a) < b){
@@ -54,7 +54,7 @@ template <typename UINT>
 void util_mult(UINT a, UINT b, UINT &resh, UINT &resl){
     const UINT HALFSIZE = sizeof(UINT)*4; //half word size in bits
     constexpr UINT NIBBLEMASK = std::pow(2,HALFSIZE)-1;  //low nibble AND mask (e.g. '00001111' for UINT)
-    const UINT UINTMAX = (((1 << (2*HALFSIZE-1))-1) | ((1 << (2*HALFSIZE-1))));
+    const UINT UINTMAX = (UINT) (0UL - (UINT)1);
     UINT al = a & NIBBLEMASK;
     UINT ah = a >> HALFSIZE;
     UINT bl = b & NIBBLEMASK;

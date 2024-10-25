@@ -8,6 +8,10 @@
 #ifndef BIGNUM_H_
 #define BIGNUM_H_
 #include <cstdint>
+#include <limits>
+#include <utility>
+#include <stdexcept>
+#include <iostream>
 #include "util.h"
 
 
@@ -20,8 +24,10 @@ public:
 	UINT *s;
 	UINT *rem;
 	bignum(UINT a[], UINT size);
-	bignum(bignum &a);
+	bignum(const bignum &a);
+	bignum(const std::string &a, uint8_t base);
 	~bignum();
+	void set(const std::string& a, uint8_t base);
 	void print();
 	void add(bignum &a);
 	void mult(bignum &a);
@@ -54,7 +60,7 @@ template <typename UINT> bignum<UINT>::~bignum(){
 	rem = nullptr;
 }
 
-template <typename UINT> bignum<UINT>::bignum(bignum &a){
+template <typename UINT> bignum<UINT>::bignum(const bignum& a){
 	SIZE = a.SIZE;
 	s = new UINT[SIZE];
 	rem = new UINT[SIZE];
@@ -64,7 +70,20 @@ template <typename UINT> bignum<UINT>::bignum(bignum &a){
 	}
 }
 
-#include <iostream>
+template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base = 10u){
+
+}
+
+template <typename UINT> void bignum<UINT>::set(const std::string& a, uint8_t base = 10U){
+	// TODO: CHECK if all characters are numeric (10) or alphanumeric
+	std::string hex;
+	for(auto it = a.rbegin(); it != a.rend(); it++){
+		
+
+
+	}
+
+}
 
 /*
  * ADDITION FUNCTION
@@ -92,6 +111,13 @@ template <typename UINT> void bignum<UINT>::add(bignum &a){
  */
 
 template <typename UINT> void bignum<UINT>::mod(bignum &a){
+	// TEST DIV/0
+	UINT zeros[a.SIZE];
+	bignum<UINT> zero(zeros,a.SIZE);
+	if(a.eq(zero)){
+		throw std::overflow_error("Division by zero exception");
+		return;
+	}
 	// first do division
 	div(a);
 	// then copy division remainder
@@ -261,8 +287,14 @@ template <typename UINT> void bignum<UINT>::div(bignum &a){
 	 *  result will be stored into tmpres variable on the left side
 	 *  remainder will be calculated (tmpdividend - a) and stored into tmpdividend for further calculations
 	 */
+
 	UINT init[SIZE] = {0};
 	bignum<UINT> tmpres(init,SIZE);		// temporary result
+	// TEST DIV/0
+	if(tmpres.eq(a)){
+		throw std::overflow_error("Division by zero exception");
+		return;
+	}
 	bignum<UINT> tmpinit(s,SIZE);
 	bignum<UINT> tmpdividend(init,SIZE);
 	init[SIZE-1] = 2;
@@ -356,4 +388,41 @@ template <typename UINT> void bignum<UINT>::incr(){
 	add(one);
 }
 
+template <typename UINT> const bignum<UINT> operator+ (const bignum<UINT> num1, const bignum<UINT> num2){
+	bignum<UINT> a{num1};
+	bignum<UINT> b{num2};
+	a.add(b);
+	return a;
+}
+
+template <typename UINT> bignum<UINT> operator- (const bignum<UINT> &num1, const bignum<UINT> &num2){
+	bignum<UINT> a{num1};
+	bignum<UINT> b{num2};
+	a.sub(b);
+	
+	return a;
+}
+
+
+template <typename UINT> bignum<UINT> operator* (const bignum<UINT> &num1, const bignum<UINT> &num2){
+	bignum<UINT> a{num1};
+	bignum<UINT> b{num2};
+	a.mult(b);
+	return a;
+}
+
+template <typename UINT> bignum <UINT> operator/ (const bignum<UINT> &num1, const bignum<UINT> &num2){
+	bignum<UINT> a{num1};
+	bignum<UINT> b{num2};
+	a.div(b);
+
+	return a;
+}
+
+template <typename UINT> bignum <UINT> operator% (const bignum<UINT> &num1, const bignum<UINT> &num2){
+	bignum<UINT> a{num1};
+	bignum<UINT> b{num2};
+	a.mod(b);
+	return a;
+}
 #endif /* BIGNUM_H_ */
