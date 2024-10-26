@@ -13,20 +13,15 @@
 
 
 int main(){
-	uint64_t c1[] = {0,0,10,10};
-	uint64_t c2[] = {0,0,20,20};
-	uint64_t c3[] = {0,0,2,2};
-	bignum<uint64_t> a(c1,sizeof(c1)/sizeof(uint64_t));
-	bignum<uint64_t> b(c2,sizeof(c2)/sizeof(uint64_t));
-    bignum<uint64_t> c(c3,sizeof(c3)/sizeof(uint64_t));
 
-	bignum<uint64_t> x = b/c;
-	bignum<uint64_t> y = a*b;
-	bignum<uint64_t> l = b%c;
+	std::string num1{"2854561232151812515135155415151995011016620123102"};
+	std::string num2{"2811515450095096987545654121215818151554054652"};
+	bignum<uint64_t> a(num1,10);
+	bignum<uint64_t> b(num2,10);
+	a.print();
+	b.print();
+	bignum<uint64_t> x = a + b;
 	x.print();
-	y.print();
-	l.print();
-   
 
     return 0;
 }

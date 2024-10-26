@@ -25,9 +25,9 @@ public:
 	UINT *rem;
 	bignum(UINT a[], UINT size);
 	bignum(const bignum &a);
-	bignum(const std::string &a, uint8_t base);
+	bignum(const std::string &a, uint8_t base );
 	~bignum();
-	void set(const std::string& a, uint8_t base);
+	void bignum_from_string(const std::string& a, uint8_t base);
 	void print();
 	void add(bignum &a);
 	void mult(bignum &a);
@@ -70,19 +70,42 @@ template <typename UINT> bignum<UINT>::bignum(const bignum& a){
 	}
 }
 
-template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base = 10u){
+template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base ){
+	// default initialization and allocation 
+	SIZE = 4;
+	s = new UINT[SIZE];
+	rem = new UINT[SIZE];
+	for (UINT i = 0; i < SIZE; ++i){
+		s[i] = 0;
+		rem[i] = 0;
+	}
+	bignum_from_string(a,base);
 
 }
 
-template <typename UINT> void bignum<UINT>::set(const std::string& a, uint8_t base = 10U){
+template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string& a, uint8_t base){	
 	// TODO: CHECK if all characters are numeric (10) or alphanumeric
-	std::string hex;
-	for(auto it = a.rbegin(); it != a.rend(); it++){
-		
+	// first delete if already exists
 
+	// tmp variables
+	UINT aOne[] = {0,0,0,1};
+	bignum<UINT> one(aOne,4);
+	UINT aBase[] = {0,0,0,base};
+	bignum<UINT> basemult(aBase,4);
+	
+	bignum<UINT> multiplier = one;
+	for(auto it = a.crbegin(); it != a.crend(); it++){
 
+		char cdig[2];
+		cdig[0] = *it;
+		cdig[1] = 0;
+		uint8_t digit = std::strtoull(cdig, nullptr, base);
+		UINT aDigit[] = {0,0,0,digit};
+		bignum<UINT> digitvalue(aDigit,SIZE);
+		digitvalue.mult(multiplier);
+		add(digitvalue);
+		multiplier.mult(basemult);
 	}
-
 }
 
 /*
