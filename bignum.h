@@ -12,6 +12,7 @@
 #include <utility>
 #include <stdexcept>
 #include <iostream>
+#include <cstdlib>
 #include "util.h"
 
 
@@ -26,6 +27,7 @@ public:
 	bignum(UINT a[], UINT size);
 	bignum(const bignum &a);
 	bignum(const std::string &a, uint8_t base );
+	bignum(UINT size);
 	~bignum();
 	void bignum_from_string(const std::string& a, uint8_t base);
 	void print();
@@ -40,7 +42,19 @@ public:
 	void incr();
 	void mod(bignum &a);
 	void div(bignum &a);
+	void inflateSize(UINT newsize);
 };
+
+template <typename UINT> bignum<UINT>::bignum( UINT size){
+	s = new UINT[size];
+	rem = new UINT[size];
+
+	SIZE = size;
+	for(UINT i = 0; i < size; i++){
+		s[i] = 0;
+		rem[i] = 0;
+	}
+}
 
 template <typename UINT> bignum<UINT>::bignum(UINT a[], UINT size){
 	s = new UINT[size];
@@ -71,8 +85,24 @@ template <typename UINT> bignum<UINT>::bignum(const bignum& a){
 }
 
 template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base ){
+		// DYNAMIC SIZE CALCUCATION:
+	//  10 digits 		hex digits 	uint64_t 
+	//		3 				3			1 
+	//  	9 				8			1 
+	// 		18				15			1
+	// 		19				16			1
+	// 		20				17			2
+	// 		38				32			2
+	// 		39				33			3
+	// 		58				49			4
+	// 		78				65			5
+	//		97				81			6
+	//		116				97			7
+	//		135				113			8
+	//		155				129			9
+	// size = ceil((input_size*log2(base)/log2(16)+1)/16)
 	// default initialization and allocation 
-	SIZE = 4;
+	SIZE = (UINT) std::ceil((a.length()*std::log2(base)/std::log2(16)+1)/16);
 	s = new UINT[SIZE];
 	rem = new UINT[SIZE];
 	for (UINT i = 0; i < SIZE; ++i){
@@ -80,32 +110,58 @@ template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base
 		rem[i] = 0;
 	}
 	bignum_from_string(a,base);
-
 }
 
 template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string& a, uint8_t base){	
 	// TODO: CHECK if all characters are numeric (10) or alphanumeric
-	// first delete if already exists
+	// TODO: CHECK SIZE
 
 	// tmp variables
-	UINT aOne[] = {0,0,0,1};
-	bignum<UINT> one(aOne,4);
-	UINT aBase[] = {0,0,0,base};
-	bignum<UINT> basemult(aBase,4);
+	bignum<UINT> one(SIZE);
+	one.s[SIZE-1] = 1;
+	bignum<UINT> basemult(SIZE);
+	basemult.s[SIZE-1] = base;
 	
-	bignum<UINT> multiplier = one;
+	bignum<UINT> multiplier(one);
 	for(auto it = a.crbegin(); it != a.crend(); it++){
 
 		char cdig[2];
 		cdig[0] = *it;
 		cdig[1] = 0;
 		uint8_t digit = std::strtoull(cdig, nullptr, base);
-		UINT aDigit[] = {0,0,0,digit};
-		bignum<UINT> digitvalue(aDigit,SIZE);
+		bignum<UINT> digitvalue(SIZE);
+		digitvalue.s[SIZE-1] = digit;
 		digitvalue.mult(multiplier);
 		add(digitvalue);
 		multiplier.mult(basemult);
 	}
+	return;
+}
+
+/*
+INCREASE bignum SIZE
+- only increases size
+- allocates new memory of new size
+- copy data from old memory
+- if everything is OK - deallocates old memory
+- set new SIZE
+- 
+*/
+
+template <typename UINT> void bignum<UINT>::inflateSize(UINT newSize){
+	if(newSize <= SIZE ){
+		return; 
+	}
+	UINT *new_s = new UINT[newSize];
+	for(UINT i = 0; i < SIZE; ++i){
+		new_s[newSize -1 -i] = s[SIZE -1 -i];
+	}
+	for(UINT i = SIZE; i < newSize; ++i){
+		new_s[newSize-1-i] = 0;
+	}
+	delete [] s;
+	s = new_s;
+	SIZE = newSize;
 }
 
 /*
@@ -114,6 +170,12 @@ template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string
  */
 
 template <typename UINT> void bignum<UINT>::add(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	uint64_t resh{0}, resl{0}, carry{0};
 	for(uint64_t i=0; i < SIZE; i++){
 		util_add_carry<uint64_t>(s[SIZE-1-i], a.s[SIZE-1-i],carry, resh, resl);
@@ -134,6 +196,12 @@ template <typename UINT> void bignum<UINT>::add(bignum &a){
  */
 
 template <typename UINT> void bignum<UINT>::mod(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	// TEST DIV/0
 	UINT zeros[a.SIZE];
 	bignum<UINT> zero(zeros,a.SIZE);
@@ -157,6 +225,12 @@ template <typename UINT> void bignum<UINT>::mod(bignum &a){
  */
 
 template <typename UINT> void bignum<UINT>::sub(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	bignum<UINT> tmparg(a.s,SIZE);
 	// SECOND COMPLEMENT METHOD
 	for(uint64_t i = 0; i < SIZE; ++i){
@@ -179,6 +253,12 @@ template <typename UINT> void bignum<UINT>::sub(bignum &a){
  */
 
 template <typename UINT> void bignum<UINT>::mult(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	uint64_t resh{0}, resl{0};
 	uint64_t bnTmp[SIZE*2] = {0};
 	for(uint64_t i = 0; i < SIZE; ++i){
@@ -217,6 +297,12 @@ template <typename UINT> void bignum<UINT>::mult(bignum &a){
 
 
 template <typename UINT> void bignum<UINT>::pow(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	UINT oneinit[SIZE] = {0};
 	bignum<UINT> zero(oneinit,SIZE);
 	oneinit[SIZE-1]= 1;
@@ -260,6 +346,12 @@ template <typename UINT> void bignum<UINT>::pow(bignum &a){
 
 
 template <typename UINT> void bignum<UINT>::powmod(bignum &a, bignum &mod){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	UINT oneinit[SIZE] = {0};
 	bignum<UINT> zero(oneinit,SIZE);
 	oneinit[SIZE-1]= 1;
@@ -310,7 +402,12 @@ template <typename UINT> void bignum<UINT>::div(bignum &a){
 	 *  result will be stored into tmpres variable on the left side
 	 *  remainder will be calculated (tmpdividend - a) and stored into tmpdividend for further calculations
 	 */
-
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	UINT init[SIZE] = {0};
 	bignum<UINT> tmpres(init,SIZE);		// temporary result
 	// TEST DIV/0
@@ -364,6 +461,12 @@ template <typename UINT> void bignum<UINT>::print(){
  * TEST IF NUMBERS ARE EQUAL
  */
 template <typename UINT> bool bignum<UINT>::eq(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	for(uint64_t i = 0; i < SIZE; i++){
 		if(s[i] != a.s[i]){
 			return false;
@@ -376,6 +479,12 @@ template <typename UINT> bool bignum<UINT>::eq(bignum &a){
  * TEST IF IT IS LESS THAN ARGUMENT
  */
 template <typename UINT> bool bignum<UINT>::lt(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	for(uint64_t i = 0; i < SIZE; i++){
 		if(s[i] < a.s[i]){
 			return true;
@@ -393,6 +502,12 @@ template <typename UINT> bool bignum<UINT>::lt(bignum &a){
  */
 
 template <typename UINT> bool bignum<UINT>::gt(bignum &a){
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
 	for(uint64_t i = 0; i < SIZE; i++){
 		if(s[i] > a.s[i]){
 			return true;
