@@ -24,25 +24,31 @@ public:
 	UINT SIZE;
 	UINT *s;
 	UINT *rem;
-	bignum(UINT a[], UINT size);
+	bignum(const UINT a[], UINT size);
 	bignum(const bignum &a);
 	bignum(const std::string &a, uint8_t base );
 	bignum(UINT size);
 	~bignum();
 	void bignum_from_string(const std::string& a, uint8_t base);
 	void print();
-	void add(bignum &a);
-	void mult(bignum &a);
-	void sub(bignum &a);
-	void pow(bignum &a);
-	void powmod(bignum &a, bignum &mod);
-	bool lt(bignum &a);
-	bool eq(bignum &a);
-	bool gt(bignum &a);
+	void add(const bignum &a);
+	void mult(const bignum &a);
+	void sub(const bignum &a);
+	void pow(const bignum &a);
+	void powmod(const bignum &a, const bignum &mod);
+	bool lt(const bignum &a);
+	bool eq(const bignum &a);
+	bool gt(const bignum &a);
 	void incr();
-	void mod(bignum &a);
-	void div(bignum &a);
+	void mod(const bignum &a);
+	void div(const bignum &a);
 	void inflateSize(UINT newsize);
+	void deflateSize(UINT newSize);
+	UINT getBusySize();
+	void shiftleft(UINT nShifts);
+	void shiftright(UINT nShifts);
+
+
 };
 
 template <typename UINT> bignum<UINT>::bignum( UINT size){
@@ -56,7 +62,7 @@ template <typename UINT> bignum<UINT>::bignum( UINT size){
 	}
 }
 
-template <typename UINT> bignum<UINT>::bignum(UINT a[], UINT size){
+template <typename UINT> bignum<UINT>::bignum(const UINT a[], UINT size){
 	s = new UINT[size];
 	rem = new UINT[size];
 
@@ -68,9 +74,9 @@ template <typename UINT> bignum<UINT>::bignum(UINT a[], UINT size){
 }
 
 template <typename UINT> bignum<UINT>::~bignum(){
-	if(s != nullptr) delete [] s;
+	delete [] s;
 	s = nullptr;
-	if(rem != nullptr) delete[] rem;
+	delete[] rem;
 	rem = nullptr;
 }
 
@@ -121,7 +127,7 @@ template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string
 	one.s[SIZE-1] = 1;
 	bignum<UINT> basemult(SIZE);
 	basemult.s[SIZE-1] = base;
-	
+
 	bignum<UINT> multiplier(one);
 	for(auto it = a.crbegin(); it != a.crend(); it++){
 
@@ -153,32 +159,56 @@ template <typename UINT> void bignum<UINT>::inflateSize(UINT newSize){
 		return; 
 	}
 	UINT *new_s = new UINT[newSize];
+	UINT *new_rem = new UINT[newSize];
 	for(UINT i = 0; i < SIZE; ++i){
 		new_s[newSize -1 -i] = s[SIZE -1 -i];
+		new_rem[newSize -1 -i] = rem[SIZE -1 -i];
 	}
 	for(UINT i = SIZE; i < newSize; ++i){
 		new_s[newSize-1-i] = 0;
+		new_rem[newSize -1 -i] = 0;
 	}
-	delete [] s;
+	delete [] s;	
+	delete [] rem;
 	s = new_s;
+	rem = new_rem;
 	SIZE = newSize;
 }
+
+template <typename UINT> void bignum<UINT>::deflateSize(UINT newSize){
+	if(newSize >= SIZE){
+		return;
+	}
+	UINT *new_s = new UINT[newSize];
+	UINT *new_rem = new UINT[newSize];
+	for(UINT i = 0; i < newSize; ++i){
+		new_s[newSize -1 -i] = s[SIZE -1 -i];
+		new_rem[newSize -1 -i] = rem[SIZE -1 -i];
+	}
+	delete [] s;	
+	delete [] rem;
+	s = new_s;
+	rem = new_rem;
+	SIZE = newSize;
+}
+
 
 /*
  * ADDITION FUNCTION
  *
  */
 
-template <typename UINT> void bignum<UINT>::add(bignum &a){
+template <typename UINT> void bignum<UINT>::add(const bignum &value){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
 	else if(SIZE < a.SIZE){
 		inflateSize(a.SIZE);
 	}
-	uint64_t resh{0}, resl{0}, carry{0};
+	UINT resh{0}, resl{0}, carry{0};
 	for(uint64_t i=0; i < SIZE; i++){
-		util_add_carry<uint64_t>(s[SIZE-1-i], a.s[SIZE-1-i],carry, resh, resl);
+		util_add_carry<UINT>(s[SIZE-1-i], a.s[SIZE-1-i],carry, resh, resl);
 		s[SIZE-1-i] = resl;
 		carry = resh;
 	}
@@ -195,7 +225,8 @@ template <typename UINT> void bignum<UINT>::add(bignum &a){
  *
  */
 
-template <typename UINT> void bignum<UINT>::mod(bignum &a){
+template <typename UINT> void bignum<UINT>::mod(const bignum &value){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -224,7 +255,8 @@ template <typename UINT> void bignum<UINT>::mod(bignum &a){
  *
  */
 
-template <typename UINT> void bignum<UINT>::sub(bignum &a){
+template <typename UINT> void bignum<UINT>::sub(const bignum &value){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -252,42 +284,47 @@ template <typename UINT> void bignum<UINT>::sub(bignum &a){
  *
  */
 
-template <typename UINT> void bignum<UINT>::mult(bignum &a){
-	if(SIZE > a.SIZE){
-		a.inflateSize(SIZE);
-	}
-	else if(SIZE < a.SIZE){
-		inflateSize(a.SIZE);
-	}
+template <typename UINT> void bignum<UINT>::mult(const bignum &value){
+	bignum<UINT> a{value};
+	a.deflateSize(a.getBusySize());  // reduce 2nd factor's size to only filled locations (leading zeros ignored)
+	
+	const UINT finalSize = SIZE + a.SIZE;
 	uint64_t resh{0}, resl{0};
-	uint64_t bnTmp[SIZE*2] = {0};
+	uint64_t bnTmp[finalSize] = {0};
 	for(uint64_t i = 0; i < SIZE; ++i){
-		for(uint64_t j = 0; j < SIZE; ++j){
-			util_mult<uint64_t>(s[SIZE-1-i], a.s[SIZE-1-j], resh, resl);
+		for(uint64_t j = 0; j < a.SIZE; ++j){
+			util_mult<uint64_t>(s[SIZE-1-i], a.s[a.SIZE-1-j], resh, resl);
 			uint64_t resh_add;
 			int64_t shiftcarry = 0;
 
 			do{
-				util_add<uint64_t>(bnTmp[2*SIZE - 1-i-j-shiftcarry], resl, resh_add, bnTmp[2*SIZE - 1 -i-j-shiftcarry]);
+				util_add<uint64_t>(bnTmp[finalSize - 1-i-j-shiftcarry], resl, resh_add, bnTmp[finalSize - 1 -i-j-shiftcarry]);
 				shiftcarry++;
 				resl = resh_add;
 			}
-			while(resh_add > 0 && (2*SIZE - 1-i-j-shiftcarry) > 0);
+			while(resh_add > 0 && (finalSize - 1-i-j-shiftcarry) > 0);
 			shiftcarry = 0;
 			do{
-				util_add<uint64_t>(bnTmp[2*SIZE - 2-i-j-shiftcarry], resh, resh_add, bnTmp[2*SIZE - 2-i-j -shiftcarry]);
+				util_add<uint64_t>(bnTmp[finalSize - 2-i-j-shiftcarry], resh, resh_add, bnTmp[finalSize - 2-i-j -shiftcarry]);
 				shiftcarry++;
 				resh = resh_add;
 			}
-			while(resh_add > 0 && (2*SIZE - 2-i-j - shiftcarry) > 0);
+			while(resh_add > 0 && (finalSize - 2-i-j - shiftcarry) > 0);
 		}
 	}
+	
+	auto oldSize = SIZE;
+	inflateSize(finalSize); //update SIZE
+
+
 	for(uint64_t i = 0;i < SIZE; i++){
-		s[i] = bnTmp[i+SIZE];
+		s[i] = bnTmp[i];
 	}
-	for(uint64_t i = 0;i < SIZE; i++){
-		rem[i] = bnTmp[i];
+	//update rem
+	for(uint64_t i = oldSize; i < finalSize; ++i){
+		rem[i] = bnTmp[i-oldSize];
 	}
+	deflateSize(getBusySize());
 }
 
 /*
@@ -296,7 +333,8 @@ template <typename UINT> void bignum<UINT>::mult(bignum &a){
  */
 
 
-template <typename UINT> void bignum<UINT>::pow(bignum &a){
+template <typename UINT> void bignum<UINT>::pow(const bignum &value){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -345,7 +383,8 @@ template <typename UINT> void bignum<UINT>::pow(bignum &a){
  */
 
 
-template <typename UINT> void bignum<UINT>::powmod(bignum &a, bignum &mod){
+template <typename UINT> void bignum<UINT>::powmod(const bignum &value, const bignum &mod){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -395,13 +434,14 @@ template <typename UINT> void bignum<UINT>::powmod(bignum &a, bignum &mod){
  *
  */
 
-template <typename UINT> void bignum<UINT>::div(bignum &a){
+template <typename UINT> void bignum<UINT>::div(const bignum &value){
 	/*
 	 *  dividend (*this) will be shifted left 1 bit, MSB is written to tmpdividend variable
 	 *  tmp dividend will be compared wih a, if greater we write '1' to tmpresult
 	 *  result will be stored into tmpres variable on the left side
 	 *  remainder will be calculated (tmpdividend - a) and stored into tmpdividend for further calculations
 	 */
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -420,10 +460,10 @@ template <typename UINT> void bignum<UINT>::div(bignum &a){
 	init[SIZE-1] = 2;
 	bignum<UINT> bitshiftleft(init,SIZE);
 	for(uint64_t i = 0; i < SIZE*sizeof(uint64_t)*8; i++){
-		tmpres.mult(bitshiftleft);
-		tmpdividend.mult(bitshiftleft);	// left shift tmpdividend
-		tmpinit.mult(bitshiftleft);		// left shift tmp init
-		if(tmpinit.rem[SIZE-1]){		// move carry to right most tmpdividend bit
+		tmpres.shiftleft(1);
+		tmpdividend.shiftleft(1);	// left shift tmpdividend
+		tmpinit.shiftleft(1);		// left shift tmp init
+		if(tmpinit.rem[SIZE-1] & 1){		// move carry to right most tmpdividend bit
 			tmpdividend.s[SIZE-1] |= 1;
 		}
 		if(tmpdividend.lt(a)){	// write '0' to tmpres
@@ -460,7 +500,8 @@ template <typename UINT> void bignum<UINT>::print(){
 /*
  * TEST IF NUMBERS ARE EQUAL
  */
-template <typename UINT> bool bignum<UINT>::eq(bignum &a){
+template <typename UINT> bool bignum<UINT>::eq(const bignum &value){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -478,7 +519,8 @@ template <typename UINT> bool bignum<UINT>::eq(bignum &a){
 /*
  * TEST IF IT IS LESS THAN ARGUMENT
  */
-template <typename UINT> bool bignum<UINT>::lt(bignum &a){
+template <typename UINT> bool bignum<UINT>::lt(const bignum &value){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -501,7 +543,8 @@ template <typename UINT> bool bignum<UINT>::lt(bignum &a){
  *
  */
 
-template <typename UINT> bool bignum<UINT>::gt(bignum &a){
+template <typename UINT> bool bignum<UINT>::gt(const bignum &value){
+	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
 	}
@@ -524,6 +567,40 @@ template <typename UINT> void bignum<UINT>::incr(){
 	a[SIZE-1] = 1;
 	bignum one(a,SIZE);
 	add(one);
+}
+
+/*
+LEFT SHIFT 
+*/
+
+template <typename UINT> void bignum<UINT>::shiftleft(UINT nShifts){
+	// TODO: REDUCE THE NUMBER OF nShifts to sizeof(UINT)*8
+	UINT carry = 0;
+	for(uint64_t i = 0; i < SIZE; ++i){
+		UINT resh;
+		util_shiftleft<UINT>(s[SIZE-1-i],nShifts,resh,s[SIZE-1-i]);
+		s[SIZE-1-i] |= carry;	//insert carry from previous iteration
+		carry = resh;  //UPDATE carry for the next iteration		
+	}
+	rem[SIZE-1] = carry;
+}
+
+/*
+RIGHT SHIFT 
+*/
+
+template <typename UINT> void bignum<UINT>::shiftright(UINT nShifts){
+	// TODO: REDUCE THE NUMBER OF nShifts to sizeof(UINT)*8
+	UINT carry = 0;
+	for(uint64_t i = 0; i < SIZE; ++i){
+		UINT resh;
+		util_shiftright<UINT>(s[i],nShifts,resh,s[i]);
+
+		//   CONTINUE HERE!!!!
+		s[i] |= carry;	//insert carry from previous iteration
+		carry = resh;  //UPDATE carry for the next iteration		
+	}
+	rem[0] = carry;
 }
 
 template <typename UINT> const bignum<UINT> operator+ (const bignum<UINT> num1, const bignum<UINT> num2){
@@ -562,5 +639,20 @@ template <typename UINT> bignum <UINT> operator% (const bignum<UINT> &num1, cons
 	bignum<UINT> b{num2};
 	a.mod(b);
 	return a;
+}
+
+template <typename UINT> UINT bignum<UINT>::getBusySize(){
+	// leading zeros are not counted!!!!
+	UINT freeSize{0};
+	for(uint64_t i = 0; i < SIZE; i++){
+		if(!(s[i] & UINTMAX)){
+			// non busy
+			freeSize++;
+		}
+		else{
+			break;
+		}
+	}
+	return SIZE-freeSize;
 }
 #endif /* BIGNUM_H_ */

@@ -31,7 +31,7 @@ void util_add(UINT a, UINT b, UINT &resh, UINT &resl){
 template <typename UINT>
 void util_add_carry(UINT a, UINT b, UINT carry, UINT &resh, UINT &resl){
 
-    const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
+    const UINT FULLSIZE = sizeof(UINT)*8; //full word size in bits
     const UINT UINTMAX = (UINT) (0UL - (UINT)1);
 
     resl = a + b;
@@ -84,6 +84,34 @@ void util_mult(UINT a, UINT b, UINT &resh, UINT &resl){
     resh = hh + (lh1 >> HALFSIZE) + (lh2 >> HALFSIZE) + c;
     return;
 }
+
+template <typename UINT>
+void util_shiftleft(UINT a, UINT nShifts, UINT &resh, UINT &resl){
+    const UINT FULLSIZE = sizeof(UINT)*8; //full word size in bits
+    // e.g. we need 111110000000000 to select 5 leftmost bits
+    // nShifts = 5
+    // 1 << (nShifts) = 100000
+    // RIGHTMASK = 100000-1 = 11111 -> we need shift 'ones' to left by (FULLSIZE - nShifts )
+    // LEFTMASK = ONES << (FULLSIZE - nShifts)    1111100000...
+    UINT RIGHTMASK =  ((UINT)1 << nShifts) - (UINT)1;
+    // UINT LEFTMASK = RIGHTMASK << (FULLSIZE - nShifts);
+    resh = (a >> (FULLSIZE - nShifts)) & RIGHTMASK;
+    resl = a<<nShifts;
+}
+
+
+template <typename UINT>
+void util_shiftright(UINT a, UINT nShifts, UINT &resh, UINT &resl){
+    const UINT FULLSIZE = sizeof(UINT)*8; //full word size in bits
+        // e.g. we need 000011111 to select 5 rightmost bits
+    // nShifts = 5
+    // 1 << (nShifts) = 100000
+    // RIGHTMASK = 100000-1 = 11111 
+    UINT RIGHTMASK =  (1 << nShifts) - 1;
+    resh = (a & RIGHTMASK) << (FULLSIZE - nShifts);
+    resl = a>>nShifts;
+}
+
 
 template <typename UINT>
 void util_subtract(UINT a, UINT b, UINT &resh, UINT &resl){

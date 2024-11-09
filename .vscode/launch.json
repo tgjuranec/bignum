@@ -1,6 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "(gdb) Launch",
             "type": "cppdbg",
@@ -102,6 +103,20 @@
                 }
             ],
             "preLaunchTask": "C/C++: gcc build active file",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Run Tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/test/test",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "build-tests",
             "miDebuggerPath": "/usr/bin/gdb"
         }
     ]
