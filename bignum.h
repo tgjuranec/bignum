@@ -19,8 +19,8 @@
 template <typename UINT>
 class bignum{
 public:
-    const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
-    const UINT UINTMAX = (((1 << (FULLSIZE-1))-1) | ((1 << (FULLSIZE-1))));
+    static const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
+    static const UINT UINTMAX = (UINT)((UINT) 0 - (UINT)1);
 	UINT SIZE;
 	UINT *s;
 	UINT *rem;
@@ -47,6 +47,8 @@ public:
 	UINT getBusySize();
 	void shiftleft(UINT nShifts);
 	void shiftright(UINT nShifts);
+
+	void addfix(const bignum &a);  // same as add() but without carry
 
 
 };
@@ -116,6 +118,7 @@ template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base
 		rem[i] = 0;
 	}
 	bignum_from_string(a,base);
+	deflateSize(getBusySize());
 }
 
 template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string& a, uint8_t base){	
@@ -179,6 +182,9 @@ template <typename UINT> void bignum<UINT>::deflateSize(UINT newSize){
 	if(newSize >= SIZE){
 		return;
 	}
+	else if(newSize == 0){
+		newSize = 1;
+	}
 	UINT *new_s = new UINT[newSize];
 	UINT *new_rem = new UINT[newSize];
 	for(UINT i = 0; i < newSize; ++i){
@@ -206,18 +212,53 @@ template <typename UINT> void bignum<UINT>::add(const bignum &value){
 	else if(SIZE < a.SIZE){
 		inflateSize(a.SIZE);
 	}
+
 	UINT resh{0}, resl{0}, carry{0};
-	for(uint64_t i=0; i < SIZE; i++){
-		util_add_carry<UINT>(s[SIZE-1-i], a.s[SIZE-1-i],carry, resh, resl);
-		s[SIZE-1-i] = resl;
-		carry = resh;
-	}
+	uint64_t i=0;
 	for(uint64_t i=0; i < SIZE; i++){
 		rem[i] =0;
 	}
-	if(carry == 1){
-		rem[SIZE-1] = 1;
+	for(i = 0; i < SIZE && i < a.SIZE; i++){
+		util_add_carry<UINT>(s[SIZE-1-i], a.s[a.SIZE-1-i],carry, resh, resl);
+		s[SIZE-1-i] = resl;
+		carry = resh;
 	}
+
+	if(carry > 0UL && i == SIZE){
+		inflateSize(SIZE+1);
+		s[0] = carry;
+		rem[SIZE-1] = carry;
+	}
+}
+
+
+/*
+ * ADDITION FUNCTION WITH FIXED SIZE (NO OVERFLOW)
+ *
+ */
+
+template <typename UINT> void bignum<UINT>::addfix(const bignum &value){
+	bignum<UINT> a{value};
+	if(SIZE > a.SIZE){
+		a.inflateSize(SIZE);
+	}
+	else if(SIZE < a.SIZE){
+		inflateSize(a.SIZE);
+	}
+	UINT resh{0}, resl{0}, carry{0};
+	uint64_t i=0;
+	for(uint64_t i=0; i < SIZE; i++){
+		rem[i] =0;
+	}
+	for(i = 0; i < SIZE && i < a.SIZE; i++){
+		util_add_carry<UINT>(s[SIZE-1-i], a.s[a.SIZE-1-i],carry, resh, resl);
+		s[SIZE-1-i] = resl;
+		carry = resh;
+	}
+	if(carry > 0UL && i < SIZE){
+		s[i] += carry;
+	}
+
 }
 
 /*
@@ -263,19 +304,13 @@ template <typename UINT> void bignum<UINT>::sub(const bignum &value){
 	else if(SIZE < a.SIZE){
 		inflateSize(a.SIZE);
 	}
-	bignum<UINT> tmparg(a.s,SIZE);
+	bignum<UINT> tmparg(a.s,a.SIZE);
 	// SECOND COMPLEMENT METHOD
-	for(uint64_t i = 0; i < SIZE; ++i){
+	for(uint64_t i = 0; i < a.SIZE; ++i){
 		tmparg.s[i] = ~tmparg.s[i];
 	}
-	add(tmparg);
-	UINT carry = 0;
-	if(rem[SIZE-1] == 0){
-		carry = 1;
-	}
-	incr();
-
-	rem[SIZE-1] = carry;
+	tmparg.incr();
+	addfix(tmparg);
 	return;
 }
 
@@ -457,8 +492,6 @@ template <typename UINT> void bignum<UINT>::div(const bignum &value){
 	}
 	bignum<UINT> tmpinit(s,SIZE);
 	bignum<UINT> tmpdividend(init,SIZE);
-	init[SIZE-1] = 2;
-	bignum<UINT> bitshiftleft(init,SIZE);
 	for(uint64_t i = 0; i < SIZE*sizeof(uint64_t)*8; i++){
 		tmpres.shiftleft(1);
 		tmpdividend.shiftleft(1);	// left shift tmpdividend
@@ -471,7 +504,7 @@ template <typename UINT> void bignum<UINT>::div(const bignum &value){
 		}
 		else{
 			tmpres.s[SIZE-1] |= 1;  // write '1' to tmpres
-			tmpdividend.sub(a);
+			tmpdividend.sub(a);//returns 31-20=1
 		}
 	}
 
@@ -574,7 +607,9 @@ LEFT SHIFT
 */
 
 template <typename UINT> void bignum<UINT>::shiftleft(UINT nShifts){
-	// TODO: REDUCE THE NUMBER OF nShifts to sizeof(UINT)*8
+	// REDUCE THE NUMBER OF nShifts to sizeof(UINT)*8
+	UINT maxShifts = sizeof(UINT)*8 -1;
+	nShifts %= maxShifts;
 	UINT carry = 0;
 	for(uint64_t i = 0; i < SIZE; ++i){
 		UINT resh;
@@ -590,7 +625,9 @@ RIGHT SHIFT
 */
 
 template <typename UINT> void bignum<UINT>::shiftright(UINT nShifts){
-	// TODO: REDUCE THE NUMBER OF nShifts to sizeof(UINT)*8
+	// REDUCE THE NUMBER OF nShifts to sizeof(UINT)*8
+	UINT maxShifts = sizeof(UINT)*8 -1;
+	nShifts %= maxShifts;
 	UINT carry = 0;
 	for(uint64_t i = 0; i < SIZE; ++i){
 		UINT resh;
@@ -641,11 +678,19 @@ template <typename UINT> bignum <UINT> operator% (const bignum<UINT> &num1, cons
 	return a;
 }
 
+
+/*
+FUNCTION RETURNS WORDS WITH NUMBERS
+OMITTING LEADING ZEROS
+*/
 template <typename UINT> UINT bignum<UINT>::getBusySize(){
 	// leading zeros are not counted!!!!
 	UINT freeSize{0};
-	for(uint64_t i = 0; i < SIZE; i++){
-		if(!(s[i] & UINTMAX)){
+	// test from 0 to SIZE-1 if it's '0'
+	// we don't test the LSB word so prevent SIZE = 0
+	// size mustnot be zero!!!!
+	for(uint64_t i = 0; i < SIZE-1; i++){
+		if(s[i] == 0){
 			// non busy
 			freeSize++;
 		}
