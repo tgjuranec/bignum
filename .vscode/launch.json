@@ -110,7 +110,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/test/test",
-            "args": [],
+            "args": ["--report_level=detailed"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

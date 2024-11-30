@@ -29,6 +29,8 @@ public:
 	bignum(const std::string &a, uint8_t base );
 	bignum(UINT size);
 	~bignum();
+	std::string to_string() const;
+	std::string to_string_bin() const;
 	void bignum_from_string(const std::string& a, uint8_t base);
 	void print();
 	void add(const bignum &a);
@@ -48,7 +50,7 @@ public:
 	void shiftleft(UINT nShifts);
 	void shiftright(UINT nShifts);
 
-	void addfix(const bignum &a);  // same as add() but without carry
+	void addFixed(const bignum &a);  // same as add() but without carry
 
 
 };
@@ -147,6 +149,58 @@ template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string
 	return;
 }
 
+
+template <typename UINT> std::string bignum<UINT>::to_string() const{
+	std::string str;
+	bignum<UINT> work{*this};
+	work.deflateSize(work.getBusySize());
+	bool leading_zeros{true};
+	for(uint64_t i = 0; i < work.SIZE; i++){
+		work.rem[i] = 0;
+	}
+	for(uint64_t i = 0; i < sizeof(UINT)*work.SIZE*8/4;++i){	
+		// shift left 4 bits			
+		work.shiftleft(4);
+		// REMOVE LEADING ZEROS
+		if((work.rem[work.SIZE-1]) == 0 && leading_zeros == true){
+			continue;
+		}
+		leading_zeros = false;
+		char a{};
+		if((work.rem[work.SIZE-1] & 0xF) >= 0 && (work.rem[work.SIZE-1] & 0xF) < 0xA){
+			a = (work.rem[work.SIZE-1] & 0xF) + 0x30;
+		}
+		else if ((work.rem[work.SIZE-1] & 0xF) >= 0xA && (work.rem[work.SIZE-1] & 0xF) < 0x10){
+			a = (work.rem[work.SIZE-1] & 0xF) + 55;
+		}
+		else{
+			str = "Error in to_string() Wrong input!\n";
+			return str;
+		}
+		str.push_back(a);
+	}
+	return str;
+}
+
+
+template <typename UINT> std::string bignum<UINT>::to_string_bin() const{
+	std::string str;
+	bignum<UINT> work{*this};
+	work.deflateSize(work.getBusySize());
+	bool leading_zeros{true};
+	for(uint64_t i = 0; i < work.SIZE; i++){
+		work.rem[i] = 0;
+	}
+	for(uint64_t i = 0; i < sizeof(UINT)*work.SIZE*8;++i){	
+		// shift left 4 bits			
+		work.shiftleft(1);
+		char a{};
+		a = (work.rem[work.SIZE-1] & 0X1) + 0X30;
+		str.push_back(a);
+	}
+	return str;
+}
+
 /*
 INCREASE bignum SIZE
 - only increases size
@@ -237,7 +291,7 @@ template <typename UINT> void bignum<UINT>::add(const bignum &value){
  *
  */
 
-template <typename UINT> void bignum<UINT>::addfix(const bignum &value){
+template <typename UINT> void bignum<UINT>::addFixed(const bignum &value){
 	bignum<UINT> a{value};
 	if(SIZE > a.SIZE){
 		a.inflateSize(SIZE);
@@ -310,7 +364,7 @@ template <typename UINT> void bignum<UINT>::sub(const bignum &value){
 		tmparg.s[i] = ~tmparg.s[i];
 	}
 	tmparg.incr();
-	addfix(tmparg);
+	addFixed(tmparg);
 	return;
 }
 
@@ -496,9 +550,14 @@ template <typename UINT> void bignum<UINT>::div(const bignum &value){
 		tmpres.shiftleft(1);
 		tmpdividend.shiftleft(1);	// left shift tmpdividend
 		tmpinit.shiftleft(1);		// left shift tmp init
+		// TEST START
+		std::cout << i << "s: " << tmpinit.to_string_bin() << "\n";
+		
+		// TEST END
 		if(tmpinit.rem[SIZE-1] & 1){		// move carry to right most tmpdividend bit
 			tmpdividend.s[SIZE-1] |= 1;
 		}
+		std::cout << i << "t: " << tmpdividend.to_string_bin() << "\n";
 		if(tmpdividend.lt(a)){	// write '0' to tmpres
 			continue;
 		}
@@ -680,7 +739,7 @@ template <typename UINT> bignum <UINT> operator% (const bignum<UINT> &num1, cons
 
 
 /*
-FUNCTION RETURNS WORDS WITH NUMBERS
+FUNCTION RETURNS NUMBER OF WORDS WITH NUMBERS
 OMITTING LEADING ZEROS
 */
 template <typename UINT> UINT bignum<UINT>::getBusySize(){
