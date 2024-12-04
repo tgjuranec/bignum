@@ -47,12 +47,11 @@
             "type": "shell",
             "command": "g++",
             "args": [
-                "-std=c++23",
+                "-std=c++20",
                 "test/test.cpp",
                 "-g",
                 "-o",
                 "test/test",
-                "-static",
                 "-lboost_unit_test_framework"
             ],
             "group": "build"

@@ -13,6 +13,8 @@
 #include <stdexcept>
 #include <iostream>
 #include <cstdlib>
+#include <memory>
+#include <vector>
 #include "util.h"
 
 
@@ -22,12 +24,13 @@ public:
     static const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
     static const UINT UINTMAX = (UINT)((UINT) 0 - (UINT)1);
 	UINT SIZE;
-	UINT *s;
-	UINT *rem;
+	std::vector<UINT> s;
+	std::vector<UINT> rem;
 	bignum(const UINT a[], UINT size);
 	bignum(const bignum &a);
 	bignum(const std::string &a, uint8_t base );
 	bignum(UINT size);
+	bignum(const std::vector<UINT> &a);
 	~bignum();
 	std::string to_string() const;
 	std::string to_string_bin() const;
@@ -55,10 +58,7 @@ public:
 
 };
 
-template <typename UINT> bignum<UINT>::bignum( UINT size){
-	s = new UINT[size];
-	rem = new UINT[size];
-
+template <typename UINT> bignum<UINT>::bignum( UINT size):s(size,0),rem(size,0){
 	SIZE = size;
 	for(UINT i = 0; i < size; i++){
 		s[i] = 0;
@@ -66,10 +66,7 @@ template <typename UINT> bignum<UINT>::bignum( UINT size){
 	}
 }
 
-template <typename UINT> bignum<UINT>::bignum(const UINT a[], UINT size){
-	s = new UINT[size];
-	rem = new UINT[size];
-
+template <typename UINT> bignum<UINT>::bignum(const UINT a[], UINT size):s(size,0),rem(size,0){
 	SIZE = size;
 	for(UINT i = 0; i < size; i++){
 		s[i] = a[i];
@@ -78,23 +75,21 @@ template <typename UINT> bignum<UINT>::bignum(const UINT a[], UINT size){
 }
 
 template <typename UINT> bignum<UINT>::~bignum(){
-	delete [] s;
-	s = nullptr;
-	delete[] rem;
-	rem = nullptr;
 }
+
+template <typename UINT> bignum<UINT>::bignum(const std::vector<UINT> &a):
+	s(a),rem(a.size(),0),SIZE(a.size()){}
+
 
 template <typename UINT> bignum<UINT>::bignum(const bignum& a){
 	SIZE = a.SIZE;
-	s = new UINT[SIZE];
-	rem = new UINT[SIZE];
-	for (UINT i = 0; i < SIZE; ++i){
-		s[i] = a.s[i];
-		rem[i] = a.rem[i];
-	}
+	s = a.s;
+	rem = a.rem;
 }
 
-template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base ){
+template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base ):
+	SIZE((UINT) std::ceil((a.length()*std::log2(base)/std::log2(16)+1)/16)),
+	s(SIZE,0),rem(SIZE,0){
 		// DYNAMIC SIZE CALCUCATION:
 	//  10 digits 		hex digits 	uint64_t 
 	//		3 				3			1 
@@ -112,9 +107,7 @@ template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base
 	//		155				129			9
 	// size = ceil((input_size*log2(base)/log2(16)+1)/16)
 	// default initialization and allocation 
-	SIZE = (UINT) std::ceil((a.length()*std::log2(base)/std::log2(16)+1)/16);
-	s = new UINT[SIZE];
-	rem = new UINT[SIZE];
+
 	for (UINT i = 0; i < SIZE; ++i){
 		s[i] = 0;
 		rem[i] = 0;
@@ -215,20 +208,12 @@ template <typename UINT> void bignum<UINT>::inflateSize(UINT newSize){
 	if(newSize <= SIZE ){
 		return; 
 	}
-	UINT *new_s = new UINT[newSize];
-	UINT *new_rem = new UINT[newSize];
-	for(UINT i = 0; i < SIZE; ++i){
-		new_s[newSize -1 -i] = s[SIZE -1 -i];
-		new_rem[newSize -1 -i] = rem[SIZE -1 -i];
+	while(newSize > s.size()){
+		s.insert(s.begin(),0);
 	}
-	for(UINT i = SIZE; i < newSize; ++i){
-		new_s[newSize-1-i] = 0;
-		new_rem[newSize -1 -i] = 0;
+	while(newSize > rem.size()){
+		rem.insert(rem.begin(),0);
 	}
-	delete [] s;	
-	delete [] rem;
-	s = new_s;
-	rem = new_rem;
 	SIZE = newSize;
 }
 
@@ -239,16 +224,12 @@ template <typename UINT> void bignum<UINT>::deflateSize(UINT newSize){
 	else if(newSize == 0){
 		newSize = 1;
 	}
-	UINT *new_s = new UINT[newSize];
-	UINT *new_rem = new UINT[newSize];
-	for(UINT i = 0; i < newSize; ++i){
-		new_s[newSize -1 -i] = s[SIZE -1 -i];
-		new_rem[newSize -1 -i] = rem[SIZE -1 -i];
+	while(newSize < s.size()){
+		s.erase(s.begin());
 	}
-	delete [] s;	
-	delete [] rem;
-	s = new_s;
-	rem = new_rem;
+	while(newSize < rem.size()){
+		rem.erase(rem.begin());
+	}
 	SIZE = newSize;
 }
 
@@ -358,7 +339,7 @@ template <typename UINT> void bignum<UINT>::sub(const bignum &value){
 	else if(SIZE < a.SIZE){
 		inflateSize(a.SIZE);
 	}
-	bignum<UINT> tmparg(a.s,a.SIZE);
+	bignum<UINT> tmparg{a};
 	// SECOND COMPLEMENT METHOD
 	for(uint64_t i = 0; i < a.SIZE; ++i){
 		tmparg.s[i] = ~tmparg.s[i];
@@ -391,14 +372,14 @@ template <typename UINT> void bignum<UINT>::mult(const bignum &value){
 				shiftcarry++;
 				resl = resh_add;
 			}
-			while(resh_add > 0 && (finalSize - 1-i-j-shiftcarry) > 0);
+			while(resh_add > 0 && (finalSize - 1-i-j-shiftcarry) != (UINT)-1);
 			shiftcarry = 0;
 			do{
 				util_add<uint64_t>(bnTmp[finalSize - 2-i-j-shiftcarry], resh, resh_add, bnTmp[finalSize - 2-i-j -shiftcarry]);
 				shiftcarry++;
 				resh = resh_add;
 			}
-			while(resh_add > 0 && (finalSize - 2-i-j - shiftcarry) > 0);
+			while(resh_add > 0 && (finalSize - 2-i-j - shiftcarry) != (UINT)-1);
 		}
 	}
 	
@@ -544,26 +525,21 @@ template <typename UINT> void bignum<UINT>::div(const bignum &value){
 		throw std::overflow_error("Division by zero exception");
 		return;
 	}
-	bignum<UINT> tmpinit(s,SIZE);
+	bignum<UINT> tmpinit(s);
 	bignum<UINT> tmpdividend(init,SIZE);
 	for(uint64_t i = 0; i < SIZE*sizeof(uint64_t)*8; i++){
 		tmpres.shiftleft(1);
 		tmpdividend.shiftleft(1);	// left shift tmpdividend
 		tmpinit.shiftleft(1);		// left shift tmp init
-		// TEST START
-		std::cout << i << "s: " << tmpinit.to_string_bin() << "\n";
-		
-		// TEST END
 		if(tmpinit.rem[SIZE-1] & 1){		// move carry to right most tmpdividend bit
 			tmpdividend.s[SIZE-1] |= 1;
 		}
-		std::cout << i << "t: " << tmpdividend.to_string_bin() << "\n";
 		if(tmpdividend.lt(a)){	// write '0' to tmpres
 			continue;
 		}
 		else{
 			tmpres.s[SIZE-1] |= 1;  // write '1' to tmpres
-			tmpdividend.sub(a);//returns 31-20=1
+			tmpdividend.sub(a);
 		}
 	}
 
