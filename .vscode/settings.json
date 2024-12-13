@@ -64,7 +64,8 @@
         "stdfloat": "cpp",
         "stop_token": "cpp",
         "thread": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "span": "cpp"
     },
     "editor.tokenColorCustomizations": {
         "textMateRules": [

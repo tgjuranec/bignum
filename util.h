@@ -10,7 +10,6 @@
 
 #include <cmath>
 #include <utility>
-#include <tuple>
 
 template <typename UINT>
 void util_add(UINT a, UINT b, UINT &resh, UINT &resl){
@@ -52,8 +51,8 @@ void util_add_carry(UINT a, UINT b, UINT carry, UINT &resh, UINT &resl){
 
 template <typename UINT>
 void util_mult(UINT a, UINT b, UINT &resh, UINT &resl){
-    const UINT HALFSIZE = sizeof(UINT)*4; //half word size in bits
-    constexpr UINT NIBBLEMASK = std::pow(2,HALFSIZE)-1;  //low nibble AND mask (e.g. '00001111' for UINT)
+    const UINT HALFSIZE = (UINT)sizeof(UINT)*4; //half word size in bits
+    const UINT NIBBLEMASK = (UINT)(1UL << HALFSIZE)-1;  //low nibble AND mask (e.g. '00001111' for UINT)
     const UINT UINTMAX = (UINT) (0UL - (UINT)1);
     UINT al = a & NIBBLEMASK;
     UINT ah = a >> HALFSIZE;

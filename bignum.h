@@ -21,7 +21,7 @@
 template <typename UINT>
 class bignum{
 public:
-    static const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits
+    static const UINT FULLSIZE = sizeof(UINT)*8; //half word size in bits	
     static const UINT UINTMAX = (UINT)((UINT) 0 - (UINT)1);
 	UINT SIZE;
 	std::vector<UINT> s;
@@ -38,6 +38,7 @@ public:
 	void print();
 	void add(const bignum &a);
 	void mult(const bignum &a);
+	void multFixed(const bignum &a);
 	void sub(const bignum &a);
 	void pow(const bignum &a);
 	void powmod(const bignum &a, const bignum &mod);
@@ -52,11 +53,42 @@ public:
 	UINT getBusySize();
 	void shiftleft(UINT nShifts);
 	void shiftright(UINT nShifts);
-
 	void addFixed(const bignum &a);  // same as add() but without carry
-
-
 };
+
+
+template <typename UINT> bignum<UINT> extendedGCD(const bignum<UINT> a, const bignum<UINT> m){
+	bignum<UINT> zero(1);
+	bignum<UINT> one(1);
+	one.incr();
+	
+    std::vector<bignum<UINT>> as{m};
+    bignum<UINT> x1(m.SIZE), y1(m.SIZE), x(m.SIZE), y(m.SIZE);
+    auto tmpa = a, tmpm = m;
+    while( tmpa.gt(zero)){
+        as.push_back(tmpa);
+        auto tmp = tmpa;
+        tmpa = tmpm % tmpa;
+        tmpm = tmp;        
+    }
+    if (!as.back().eq(one)) return zero;
+    x1 = zero;
+    y1 = one;
+    for(auto it = as.crbegin(); it != (as.crend()-1); ++it){
+		auto ratio = (*(it+1) / (*it));
+        auto prod{ratio};
+		prod.multFixed(x1);
+		x = y1 - prod;
+        y = x1;
+		std::cout << x.to_string() << " " << y.to_string() << "\n";
+        x1 = x;
+        y1 = y;
+    }
+	x.addFixed(m);
+    return ((x % m));
+}
+
+
 
 template <typename UINT> bignum<UINT>::bignum( UINT size):s(size,0),rem(size,0){
 	SIZE = size;
@@ -117,7 +149,9 @@ template <typename UINT> bignum<UINT>::bignum(const std::string& a, uint8_t base
 }
 
 template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string& a, uint8_t base){	
+	//
 	// TODO: CHECK if all characters are numeric (10) or alphanumeric
+	
 	// TODO: CHECK SIZE
 
 	// tmp variables
@@ -128,11 +162,19 @@ template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string
 
 	bignum<UINT> multiplier(one);
 	for(auto it = a.crbegin(); it != a.crend(); it++){
-
-		char cdig[2];
-		cdig[0] = *it;
-		cdig[1] = 0;
-		uint8_t digit = std::strtoull(cdig, nullptr, base);
+		std::string cdig {*it,0};
+		uint8_t digit;
+		try{
+			digit = std::stoull(cdig, nullptr, base);
+		}
+		catch(std::invalid_argument& e){
+			// std::cout << e.what() << " - not a digit: " << *it << "\n";
+			continue;
+		}
+		catch(std::out_of_range &e){
+			std::cout << e.what() << *it << "\n";
+			return;
+		}
 		bignum<UINT> digitvalue(SIZE);
 		digitvalue.s[SIZE-1] = digit;
 		digitvalue.mult(multiplier);
@@ -144,6 +186,7 @@ template <typename UINT> void bignum<UINT>::bignum_from_string(const std::string
 
 
 template <typename UINT> std::string bignum<UINT>::to_string() const{
+	// TODO: force to print 0
 	std::string str;
 	bignum<UINT> work{*this};
 	work.deflateSize(work.getBusySize());
@@ -155,7 +198,7 @@ template <typename UINT> std::string bignum<UINT>::to_string() const{
 		// shift left 4 bits			
 		work.shiftleft(4);
 		// REMOVE LEADING ZEROS
-		if((work.rem[work.SIZE-1]) == 0 && leading_zeros == true){
+		if((work.rem[work.SIZE-1]) == 0 && leading_zeros == true){			
 			continue;
 		}
 		leading_zeros = false;
@@ -171,6 +214,10 @@ template <typename UINT> std::string bignum<UINT>::to_string() const{
 			return str;
 		}
 		str.push_back(a);
+	}
+	// if it's '0'
+	if(leading_zeros == true){
+		str.push_back('0');
 	}
 	return str;
 }
@@ -290,10 +337,6 @@ template <typename UINT> void bignum<UINT>::addFixed(const bignum &value){
 		s[SIZE-1-i] = resl;
 		carry = resh;
 	}
-	if(carry > 0UL && i < SIZE){
-		s[i] += carry;
-	}
-
 }
 
 /*
@@ -344,7 +387,9 @@ template <typename UINT> void bignum<UINT>::sub(const bignum &value){
 	for(uint64_t i = 0; i < a.SIZE; ++i){
 		tmparg.s[i] = ~tmparg.s[i];
 	}
-	tmparg.incr();
+	bignum<uint64_t> one{1};
+	one.incr();
+	tmparg.addFixed(one);			//prevent overflow if we do incr() -> ERROR
 	addFixed(tmparg);
 	return;
 }
@@ -360,7 +405,8 @@ template <typename UINT> void bignum<UINT>::mult(const bignum &value){
 	
 	const UINT finalSize = SIZE + a.SIZE;
 	uint64_t resh{0}, resl{0};
-	uint64_t bnTmp[finalSize] = {0};
+	// unique pointer as array 
+	std::unique_ptr<uint64_t[]> bnTmp = std::make_unique<uint64_t[]>(finalSize);
 	for(uint64_t i = 0; i < SIZE; ++i){
 		for(uint64_t j = 0; j < a.SIZE; ++j){
 			util_mult<uint64_t>(s[SIZE-1-i], a.s[a.SIZE-1-j], resh, resl);
@@ -393,6 +439,54 @@ template <typename UINT> void bignum<UINT>::mult(const bignum &value){
 	//update rem
 	for(uint64_t i = oldSize; i < finalSize; ++i){
 		rem[i] = bnTmp[i-oldSize];
+	}
+	deflateSize(getBusySize());
+}
+
+
+
+/*
+ * MULTIPLICATION FUNCTION - FIXED 
+ *
+ */
+
+template <typename UINT> void bignum<UINT>::multFixed(const bignum &value){
+	bignum<UINT> a{value};
+	a.deflateSize(a.getBusySize());  // reduce 2nd factor's size to only filled locations (leading zeros ignored)
+	
+	const UINT finalSize = SIZE + a.SIZE;
+	uint64_t resh{0}, resl{0};
+	// unique pointer as array 
+	std::unique_ptr<uint64_t[]> bnTmp = std::make_unique<uint64_t[]>(finalSize);
+	for(uint64_t i = 0; i < SIZE; ++i){
+		for(uint64_t j = 0; j < a.SIZE; ++j){
+			util_mult<uint64_t>(s[SIZE-1-i], a.s[a.SIZE-1-j], resh, resl);
+			uint64_t resh_add;
+			int64_t shiftcarry = 0;
+
+			do{
+				util_add<uint64_t>(bnTmp[finalSize - 1-i-j-shiftcarry], resl, resh_add, bnTmp[finalSize - 1 -i-j-shiftcarry]);
+				shiftcarry++;
+				resl = resh_add;
+			}
+			while(resh_add > 0 && (finalSize - 1-i-j-shiftcarry) != (UINT)-1);
+			shiftcarry = 0;
+			do{
+				util_add<uint64_t>(bnTmp[finalSize - 2-i-j-shiftcarry], resh, resh_add, bnTmp[finalSize - 2-i-j -shiftcarry]);
+				shiftcarry++;
+				resh = resh_add;
+			}
+			while(resh_add > 0 && (finalSize - 2-i-j - shiftcarry) != (UINT)-1);
+		}
+	}
+	
+	
+	for(uint64_t i = finalSize-SIZE;i < finalSize; i++){
+		s[i-finalSize+SIZE] = bnTmp[i];
+	}
+	//update rem
+	for(uint64_t i = 0; i < finalSize-SIZE; ++i){
+		rem[i] = bnTmp[i];
 	}
 	deflateSize(getBusySize());
 }
@@ -735,4 +829,5 @@ template <typename UINT> UINT bignum<UINT>::getBusySize(){
 	}
 	return SIZE-freeSize;
 }
+
 #endif /* BIGNUM_H_ */
