@@ -23,7 +23,7 @@ pipeline {
             steps {
                 sh 'echo "Test..."'
                 sh '''
-                    cd test && cmaake -B build -S .
+                    cd test && cmake -B build -S .
 		    cmake --build build
 		    ./build/bignum_test
                     '''
