@@ -31,8 +31,8 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                sh 'tar -czf algos.tar.gz target/algos'
-                archiveArtifacts artifacts: 'algos.tar.gz', fingerprint: true
+                sh 'tar -czf libbignum.tar.gz build/libbignum.a'
+                archiveArtifacts artifacts: 'libbignum.tar.gz', fingerprint: true
             }
         }
     }
