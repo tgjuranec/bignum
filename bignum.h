@@ -80,7 +80,7 @@ template <typename UINT> bignum<UINT> extendedGCD(const bignum<UINT> a, const bi
 		prod.multFixed(x1);
 		x = y1 - prod;
         y = x1;
-		std::cout << x.to_string() << " " << y.to_string() << "\n";
+		// std::cout << x.to_string() << " " << y.to_string() << "\n";
         x1 = x;
         y1 = y;
     }

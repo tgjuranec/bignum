@@ -4,14 +4,14 @@
 #define BOOST_TEST_MODULE MathTests
 #define BOOST_TEST_DYN_LINK //- only for dynamic linking!!!!
 //#define BOOST_TEST_MAIN // This tells Boost to provide a main() function
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/unit_test.hpp>
 #include <random>
 #include <cmath>
 #include "../bignum.h"
 
 BOOST_AUTO_TEST_SUITE(MathTestSuite)
 
-constexpr uint64_t countmax = std::pow(10,2);
+constexpr uint64_t countmax = std::pow(10,5);
 constexpr uint64_t countmaxmult = std::pow(10,5);
 
 uint64_t extgcd_test(const uint64_t a, const uint64_t m){
@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(Test_ExtendedGCD)
         auto dtest = extgcd_test(ce[0], cm[0]);
         if(dtest != 0){
             auto d = extendedGCD(e,m);
-            BOOST_TEST(d.s[d.SIZE-1] == dtest, "Real: " << d.to_string() << " Compare: " << dtest );
+            BOOST_TEST(d.s[d.SIZE-1] == dtest);
         }
     }
 
@@ -110,12 +110,7 @@ uint64_t ce[] = {65537};
     auto phi = p_1 * q_1;
     auto ncalc = p * q;
     auto d = extendedGCD(e,n);
-    std::cout << d.to_string() << "\n";
-    BOOST_TEST(n.eq(ncalc), "\np: " << p.to_string() << 
-        "\nq: " << q.to_string() <<
-        "\nd: " << phi.to_string() <<
-        "\nn from file: " << n.to_string() <<
-        "\nn calculated: " << ncalc.to_string());
+    BOOST_TEST(n.eq(ncalc));
 }
 
 
@@ -133,10 +128,7 @@ BOOST_AUTO_TEST_CASE(Test_Multiplication)
         bignum<uint64_t> b{bc, sizeof(bc)/sizeof(uint64_t)};
         auto x = a*b;
         auto z = x / b ;
-        BOOST_TEST(a.eq(z), "\na: " << i << ". " << a.to_string() << 
-        "\nb: " << b.to_string() <<
-        "\nx: " << x.to_string() <<
-        "\nz: " << z.to_string());
+        BOOST_TEST(a.eq(z));
     }
 }
 
